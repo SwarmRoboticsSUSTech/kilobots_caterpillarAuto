@@ -235,6 +235,7 @@ void move() {
 	}
 	// farer and farer
 	// If the distance_to_motivated keep unchanged, it is unusual.
+	/*
 	else if (distance_to_motivated > distance_to_motivated_parent)
 	{
 		// It's not my fault, so I continue my movement as before.
@@ -250,8 +251,9 @@ void move() {
 			next_motion = opposite_move(offspring);
 		}
 	}
+	*/	
 	// distance_to_motivated == distance_to_motivated_parent
-	else
+	else if (distance_to_motivated == distance_to_motivated_parent)
 	{
 		if (flag_maxest == YES)
 		{
@@ -268,6 +270,7 @@ void move() {
 			next_motion = opposite_move(offspring);			
 		}
 	}
+	
 	
 	offspring = next_motion;
 	set_motion(offspring);
