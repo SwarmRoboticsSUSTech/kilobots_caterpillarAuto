@@ -6,14 +6,14 @@
 #define FORMED_NO 0
 
 #define TIME_CHECK_MAXER 32 * 5 // 5s
-#define TIME_CHECK_MINOR 32 * 10
+#define TIME_CHECK_MINOR 32 * 4
 #define TIME_LAST_GRADIENT 32 * 5 // 3s
-#define TIME_LAST_MOTION_UPDATE 32 * 0 // 0.4
+#define TIME_LAST_MOTION_UPDATE 32 * 0.3 // 0.4
 
-#define DISTANCE_GRADIENT 70  // 70mm
+#define DISTANCE_GRADIENT 100  // 70mm
 #define DISTANCE_MIN 33 // 33mm
 #define DISTANCE_MAX 100 // 100mm
-#define DISTANCE_MOVE 40 // 60mm
+#define DISTANCE_MOVE 42 // 60mm
 #define DISTANCE_COLLIDE 40 // 45mm
 #define DISTANCE_STOP 50 // 40mm
 
@@ -181,7 +181,7 @@ void setup()
 void check_own_gradient() {
 	// If no neighbors detected within TIME_LAST_GRADIENT seconds
 	// then sleep waiting for be activated.
-    if ( (kilo_uid != SEED_ID) && (kilo_ticks > (last_gradient_anchored + TIME_LAST_GRADIENT)) && (own_gradient < GRADIENT_MAX))
+    if ( (kilo_uid != SEED_ID) && (kilo_ticks > (last_found_minor + TIME_LAST_GRADIENT)) && (own_gradient < GRADIENT_MAX))
     {   
         own_gradient = GRADIENT_MAX;
 		formed_state = FORMED_NO;
@@ -250,6 +250,7 @@ void move() {
 			next_motion = opposite_move(offspring);
 		}
 	}
+	// distance_to_motivated == distance_to_motivated_parent
 	else
 	{
 		if (flag_maxest == YES)
@@ -287,7 +288,7 @@ void loop() {
 		{
 			// When my motivator is closer enough can I move 
 			// to assure my motivator is not lost.
-			if (distance_to_motivator <= DISTANCE_COLLIDE)
+			if (distance_to_motivator <= DISTANCE_MOVE)
 			{
 				state_myself = MOVE;
 			}
@@ -305,7 +306,7 @@ void loop() {
 		{
 			// When my motivator is closer enough can I move 
 			// to assure my motivator is not lost.
-			if (distance_to_motivator <= DISTANCE_COLLIDE)
+			if (distance_to_motivator <= DISTANCE_MOVE)
 			{
 				state_myself = MOVE;
 			}
@@ -322,24 +323,40 @@ void loop() {
 			// TIME_LAST_MOTION_UPDATE.
 			// This can assure the fixed distance kilobot move 
 			// in a fixed speed.
-			if (kilo_ticks > (last_motion_update + TIME_LAST_MOTION_UPDATE))
+			// If distance is updated, then I can move according to 
+			// strategies.
+			if ((update_distance_to_motivated == UPDATE) && (update_distance_to_motivator == UPDATE))
 			{
+				if (flag_minor == NO)
+				{
+					update_distance_to_motivator = UNUPDATE;
+				}
+				if (flag_maxest == NO)
+				{
+					update_distance_to_motivated = UNUPDATE;
+				}
+
 				distance_line = distance_to_motivated + distance_to_motivator;
 				move();
+				last_motion_update = kilo_ticks;
 				distance_to_motivated_parent = distance_to_motivated;
 				distance_line_parent = distance_line;
+			}
+			else if (kilo_ticks > (last_motion_update + TIME_LAST_MOTION_UPDATE))
+			{
+				set_motion(STOP);
 			}
 		}
 		else
 		{
-			set_color(RGB(0, 0, 0));
+			//set_color(RGB(0, 0, 0));
 			set_motion(STOP);
 		}
     }
 	// Stop when the sequence has not formed.
 	else
 	{
-		set_color(RGB(0, 0, 0));
+		//set_color(RGB(0, 0, 0));
 		state_myself = COMPLETED;
 		set_motion(STOP);
 	}
@@ -382,59 +399,88 @@ void message_rx(message_t *m, distance_measurement_t *d)
 	// In the valid distance.
 	if (distance <= DISTANCE_GRADIENT)
 	{
-		// Assure that the received data is valid.
-		if (received_gradient != own_gradient)  
+		last_gradient_anchored = kilo_ticks;
+		// The message was sent by my motivated.
+		// I found someone's gradient maxer than mine in the world.
+		// My formed state is determined by my maxer.
+		if (received_gradient > own_gradient)
 		{
-			last_gradient_anchored = kilo_ticks;
-			// The message was sent by my motivated.
-			// I found someone's gradient maxer than mine in the world.
-			// My formed state is determined by my maxer.
-			if (received_gradient > own_gradient)
+			last_found_maxer = kilo_ticks;
+			flag_maxest = NO;
+			if (received_gradient == (own_gradient + 1))
 			{
-				last_found_maxer = kilo_ticks;
-				if (received_gradient == (own_gradient + 1))
+				formed_state = m->data[1];
+				state_motivated =  m->data[2];
+				update_state_motivated = UPDATE;
+				if (state_motivated != MOVE) 
 				{
-					formed_state = m->data[1];
-					state_motivated =  m->data[2];
-					update_state_motivated = UPDATE;
-					if (state_motivated != MOVE) {
-						if ((num_stop ++) == 1) 
-						{
-							my_fault = NO;
-						}
-						distance_to_motivated = distance;
-						update_distance_to_motivated = UPDATE;
-					}
-					else
+					if ((num_stop ++) == 1)
 					{
-						num_stop = 0;
+						my_fault = NO;
 					}
 				}
+				else
+				{
+					num_stop = 0;
+				}
+				distance_to_motivated = distance;
+				update_distance_to_motivated = UPDATE;
 			}
-			// The message was sent by my motivator.
-			// (received_gradient < own_gradient)
+		}
+		// That guy has the same gradient with mine.
+		// There needs a comparison between us.
+		else if ((received_gradient == own_gradient) && (received_gradient != GRADIENT_MAX))
+		{
+			distance_to_motivator_pair = m->data[3];
+			if (distance_to_motivator_pair < distance_to_motivator)
+			{
+				last_found_minor = kilo_ticks;
+				own_gradient = received_gradient + 1;
+				state_motivator =  m->data[2];
+				update_state_motivator = UPDATE;
+				distance_to_motivator = distance;
+				update_distance_to_motivator = UPDATE;
+			}
+		}
+		// received_gradient < own_gradient
+		// The message was sent by my motivator.
+		else if (kilo_uid != SEED_ID)
+		{
+			if (((own_gradient - received_gradient) == 2) || ((own_gradient - received_gradient) == 3))
+			{
+				// The message sender is closer, and meanwhile the last 
+				// time I found a minor is too long ago (TIME_CHECK_MINOR).
+				// Thus I need  to find a new motivator.
+				if ((distance < distance_to_motivator) && (kilo_ticks > (last_found_minor + TIME_CHECK_MINOR)))
+				{
+					last_found_minor = kilo_ticks;
+					own_gradient = received_gradient + 1;
+					state_motivator =  m->data[2];
+					update_state_motivator = UPDATE;
+					distance_to_motivator = distance;
+					update_distance_to_motivator = UPDATE;
+				}
+				else if (distance < distance_to_motivator_pair)
+				{
+					last_found_minor = kilo_ticks;
+					own_gradient = received_gradient + 1;
+					state_motivator =  m->data[2];
+					update_state_motivator = UPDATE;
+					distance_to_motivator = distance;
+					update_distance_to_motivator = UPDATE;
+				}
+			}
 			else
 			{
 				last_found_minor = kilo_ticks;
 				own_gradient = received_gradient + 1;
 				state_motivator =  m->data[2];
 				update_state_motivator = UPDATE;
-				if (state_motivator != MOVE)
-				{
-					distance_to_motivator = distance;
-					update_distance_to_motivator = UPDATE;
-				}
+				distance_to_motivator = distance;
+				update_distance_to_motivator = UPDATE;
 			}
 		}
-		else
-		{	
-			distance_to_motivator_pair = m->data[3];
-			if (distance_to_motivator_pair < distance_to_motivator)
-			{
-				own_gradient = own_gradient + 1;
-				last_found_minor = kilo_ticks;
-			}
-		}
+
 		
 		//flag_maxest = NO;
 		
@@ -447,6 +493,7 @@ void message_rx(message_t *m, distance_measurement_t *d)
 			state_motivated = COMPLETED;
 			flag_maxest = YES;
 			distance_to_motivated = DISTANCE_MAX;
+			update_distance_to_motivated = UPDATE;
 		}	
 		/*	
 		// I am the minor in the sequence.
