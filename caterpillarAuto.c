@@ -8,7 +8,7 @@
 #define TIME_CHECK_MAXER 32 * 5 // 5s
 #define TIME_CHECK_MINOR 32 * 4
 #define TIME_LAST_GRADIENT 32 * 5 // 3s
-#define TIME_LAST_MOTION_UPDATE 32 * 0.3 // 0.4
+#define TIME_LAST_MOTION_UPDATE 32 * 0.7 // 0.4
 
 #define DISTANCE_GRADIENT 100  // 70mm
 #define DISTANCE_MIN 33 // 33mm
@@ -29,7 +29,6 @@
 #define UPDATE 1
 #define UNUPDATE 0
 
-
 #define NEARER (distance_to_motivated < distance_to_motivated_best)
 #define EQUAL (distance_to_motivated == distance_to_motivated_best)
 #define FARER (distance_to_motivated > distance_to_motivated_best)
@@ -41,6 +40,12 @@
 #define EQUAL_OUTLINE (EQUAL && OUTLINE)
 #define FARER_INLINE (FARER && INLINE)
 #define FARER_OUTLINE (FARER && OUTLINE)
+
+#define LOGIC_NEARER 0
+#define LOGIC_EQUAL 1
+#define LOGIC_FARER 2
+#define LOGIC_INLINE 3
+#define LOGIC_OUTLINE 4
 
 int distance = DISTANCE_MAX;
 int distance_to_motivator = DISTANCE_MAX;
@@ -143,20 +148,24 @@ void set_motion(int new_motion)
 
         if (current_motion == STOP)
         {
+			set_color(RGB(0, 0, 0));
             set_motors(0, 0);
         }
         else if (current_motion == FORWARD)
         {
+			//set_color(RGB(1, 0, 0));
             spinup_motors();
             set_motors(kilo_straight_left, kilo_straight_right);
         }
         else if (current_motion == LEFT)
         {
+			//set_color(RGB(0, 1, 0));
             spinup_motors();
             set_motors(kilo_turn_left, 0);
         }
         else if (current_motion == RIGHT)
         {
+			//set_color(RGB(0, 0, 1));
             spinup_motors();
             set_motors(0, kilo_turn_right);
         }
@@ -202,6 +211,7 @@ void check_own_gradient() {
 
 int opposite_move(int offspring)
 {
+	set_color(RGB(1, 1, 1));
 	int next_motion = offspring;
 	switch (offspring)
 	{
@@ -230,77 +240,122 @@ int opposite_move(int offspring)
 void move() {
 	int next_motion = offspring;
 
-	// Decision making: 6 * 6 matrix.
-	if (NEARER_INLINE)
+	// Debug.
+	/*
+	if (NEARER)
 	{
+		set_color(RGB(1, 0, 0));
+	}
+	else if (EQUAL)
+	{
+		set_color(RGB(0, 1, 0));
+	}
+	else if (FARER)
+	{
+		set_color(RGB(0, 0, 1));
+	}
+	
+	if (INLINE)
+	{
+		set_color(RGB(1, 0, 0));
+	}
+	else if (OUTLINE)
+	{
+		set_color(RGB(0, 1, 0));
+	}
+	*/
+
+	// Decision making: 6 * 6 matrix.
+	if (flag_maxest == YES)
+	{
+		next_motion = FORWARD;
+	}
+	else if (NEARER_INLINE)
+	{
+		set_color(RGB(1, 0, 0));
 		next_motion = offspring;
-		last_logic_1 = NEARER;
-		last_logic_2 = INLINE;
+		last_logic_1 = LOGIC_NEARER;
+		last_logic_2 = LOGIC_INLINE;
 	}
 	else if (NEARER_OUTLINE)
 	{
-		if (last_logic_2 == OUTLINE)
+		set_color(RGB(0, 1, 0));
+		if (last_logic_2 == LOGIC_OUTLINE)
 		{
+			//set_color(RGB(0, 1, 0));
 			next_motion = offspring;
 		}
 		else
 		{
+			//set_color(RGB(0, 1, 0));
 			next_motion = opposite_move(offspring);
 		}
-		last_logic_1 = NEARER;
-		last_logic_2 = OUTLINE;
+		last_logic_1 = LOGIC_NEARER;
+		last_logic_2 = LOGIC_OUTLINE;
 	}
 	else if (EQUAL_INLINE)
 	{
-		if (last_logic_1 == NEARER)
+        set_color(RGB(0, 0, 1));
+		if (last_logic_1 == LOGIC_NEARER)
 		{
+			//set_color(RGB(0, 1, 0));
 			next_motion = opposite_move(offspring);
 		}
 		else
 		{
+			//set_color(RGB(1, 0, 0));
 			next_motion = offspring;
 		}
-		last_logic_1 = EQUAL;
-		last_logic_2 = INLINE;
+		last_logic_1 = LOGIC_EQUAL;
+		last_logic_2 = LOGIC_INLINE;
 	}
 	else if (EQUAL_OUTLINE)
 	{
-		if ((last_logic_1 != NEARER) && (last_logic_2 == OUTLINE))
+		set_color(RGB(1, 1, 0));
+		if ((last_logic_1 != LOGIC_NEARER) && (last_logic_2 == LOGIC_OUTLINE))
 		{
+			//set_color(RGB(1, 0, 0));
 			next_motion = offspring;
 		}
 		else
 		{
+			//set_color(RGB(0, 1, 0));
 			next_motion = opposite_move(offspring);
 		}
-		last_logic_1 = EQUAL;
-		last_logic_2 = OUTLINE;
+		last_logic_1 = LOGIC_EQUAL;
+		last_logic_2 = LOGIC_OUTLINE;
 	}
 	else if (FARER_INLINE)
 	{
-		if (last_logic_1 == FARER)
+		set_color(RGB(1, 0, 1));
+		if (last_logic_1 == LOGIC_FARER)
 		{
+			//set_color(RGB(1, 0, 0));
 			next_motion = offspring;
 		}
 		else
 		{
+			//set_color(RGB(0, 1, 0));
 			next_motion = opposite_move(offspring);
 		}
-		last_logic_1 = FARER;
-		last_logic_2 = INLINE;
+		last_logic_1 = LOGIC_FARER;
+		last_logic_2 = LOGIC_INLINE;
 	}
 	else if (FARER_OUTLINE)
 	{
-		if ((last_logic_1 && last_logic_2) == FARER_OUTLINE)
+		set_color(RGB(0, 1, 1));
+		if ((last_logic_1 == LOGIC_FARER) && (last_logic_2 == LOGIC_OUTLINE))
 		{
+			//set_color(RGB(1, 0, 0));
 			next_motion = offspring;
 		}
 		else
 		{
+			//set_color(RGB(0, 1, 0));
 			next_motion = opposite_move(offspring);
 		}
-		last_logic_1 = FARER;
-		last_logic_2 = OUTLINE;
+		last_logic_1 = LOGIC_FARER;
+		last_logic_2 = LOGIC_OUTLINE;
 	}
 
 	// Update and carry out the decision making above.
@@ -373,9 +428,6 @@ void loop() {
 				}
 
 				distance_line = distance_to_motivated + distance_to_motivator;
-				move();
-				last_motion_update = kilo_ticks;
-
 				// Update.
 				// My motivated stops for the first time.
 				// So the distance_to_motivated becomes larger is not my fault.
@@ -383,11 +435,18 @@ void loop() {
 				// distance_line_best needed to be initialized.
 				if (my_fault == NO)
 				{
+					//set_color(RGB(1, 0, 0));
+					//delay(50);
 					my_fault = YES;
 					distance_to_motivated_best = distance_to_motivated;
 					distance_line_best = distance_line;
 				}
-				else
+
+				//set_color(RGB(0, 1, 0));	
+				move();
+				last_motion_update = kilo_ticks;
+
+				if (my_fault == YES)
 				{
 					// Update distance_to_motivated_best
 					if (distance_to_motivated < distance_to_motivated_best)
@@ -401,6 +460,8 @@ void loop() {
 					}
 				}
 			}
+			// If the distance is long-term no updated, 
+			// then I stop and wait.
 			else if (kilo_ticks > (last_motion_update + TIME_LAST_MOTION_UPDATE))
 			{
 				set_motion(STOP);
@@ -473,7 +534,7 @@ void message_rx(message_t *m, distance_measurement_t *d)
 				update_state_motivated = UPDATE;
 				if (state_motivated != MOVE)
 				{
-					if ((num_stop ++) == 1)
+					if ((++num_stop) == 1)
 					{
 						my_fault = NO;
 					}
