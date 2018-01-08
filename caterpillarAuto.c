@@ -1,22 +1,26 @@
 #include "kilolib.h"
 
+// Gradient.
 #define SEED_ID 0
 #define GRADIENT_MAX 255
-#define FORMED_OK 1
-#define FORMED_NO 0
 
-#define TIME_CHECK_MAXER 32 * 5 // 5s
+// Time or duration encoding.
+// 32 * n, n seconds.
+#define TIME_CHECK_MAXER 32 * 5 
 #define TIME_CHECK_MINOR 32 * 4
-#define TIME_LAST_GRADIENT 32 * 5 // 3s
-#define TIME_LAST_MOTION_UPDATE 32 * 0.7 // 0.4
+#define TIME_LAST_GRADIENT 32 * 5 
+#define TIME_LAST_MOTION_UPDATE 32 * 0.7
 
-#define DISTANCE_GRADIENT 100  // 70mm
-#define DISTANCE_MIN 33 // 33mm
-#define DISTANCE_MAX 100 // 100mm
-#define DISTANCE_MOVE 42 // 60mm
-#define DISTANCE_COLLIDE 40 // 45mm
-#define DISTANCE_STOP 50 // 40mm
+// Distance encoding.
+// mm.
+#define DISTANCE_GRADIENT 100  
+#define DISTANCE_MIN 33 
+#define DISTANCE_MAX 100 
+#define DISTANCE_MOVE 42 
+#define DISTANCE_COLLIDE 40 
+#define DISTANCE_STOP 50 
 
+// Motion encoding.
 #define STOP 0
 #define FORWARD 1
 #define LEFT 2
@@ -24,11 +28,15 @@
 #define MOVE 4
 #define COMPLETED 5
 
+// Flag encoding.
+#define FORMED_OK 1
+#define FORMED_NO 0
 #define YES 1
 #define NO 0
 #define UPDATE 1
 #define UNUPDATE 0
 
+// Logic expression encoding.
 #define NEARER (distance_to_motivated < distance_to_motivated_best)
 #define EQUAL (distance_to_motivated == distance_to_motivated_best)
 #define FARER (distance_to_motivated > distance_to_motivated_best)
@@ -41,12 +49,27 @@
 #define FARER_INLINE (FARER && INLINE)
 #define FARER_OUTLINE (FARER && OUTLINE)
 
+// Logic encoding.
 #define LOGIC_NEARER 0
 #define LOGIC_EQUAL 1
 #define LOGIC_FARER 2
 #define LOGIC_INLINE 3
 #define LOGIC_OUTLINE 4
 
+
+// Gradient.
+int own_gradient = GRADIENT_MAX;
+int received_gradient = 0;
+
+// Time or duration
+uint32_t last_gradient_anchored;
+uint32_t last_found_maxer;
+uint32_t last_found_minor;
+uint32_t last_motion_update;
+
+// Distance.
+// motivator: my direct follower.
+// motivated: my direct leader.
 int distance = DISTANCE_MAX;
 int distance_to_motivator = DISTANCE_MAX;
 int distance_to_motivator_pair = DISTANCE_MAX;
@@ -56,35 +79,30 @@ int distance_to_motivated_best = DISTANCE_MAX;
 int distance_line = DISTANCE_MAX;
 int distance_line_best = DISTANCE_MAX;
 
-int last_logic_1 = 0;
-int last_logic_2 = 0;
+// Motion.
+int current_motion = FORWARD;
+int next_motion = FORWARD;
+int num_stop = 0;
+int my_fault = YES;
+int offspring = FORWARD;
 
+// Logic.
+int state_motivated = STOP;
+int state_motivator = STOP;
+int state_myself = STOP;
 int flag_maxest = NO;
 int flag_minor = NO;
+int formed_state = FORMED_NO;
+
+int last_logic_1 = LOGIC_EQUAL;
+int last_logic_2 = LOGIC_INLINE;
+
 int update_distance_to_motivated = UNUPDATE;
 int update_distance_to_motivator = UNUPDATE;
 int update_state_motivated = UNUPDATE;
 int update_state_motivator = UNUPDATE;
 
-int own_gradient = GRADIENT_MAX;
-int received_gradient = 0;
-int state_motivated = STOP;
-int state_motivator = STOP;
-int state_myself = STOP;
-
-int current_motion = FORWARD;
-int next_motion = FORWARD;
-int num_stop = 0;
-int my_fault = YES;
-int num_move = 0;
-int offspring = FORWARD;
-
-
-int formed_state = FORMED_NO;
-uint32_t last_gradient_anchored;
-uint32_t last_found_maxer;
-uint32_t last_found_minor;
-uint32_t last_motion_update;
+// Message.
 message_t message;
 
 
@@ -98,16 +116,6 @@ int randBinary(){
     int random_direction = (random_number % 2);
 
     return random_direction;
-}
-
-// Generate a random number in the closed interval (0, 1).
-float rand(){
-    // Generate an 8-bit random number (between 0 and 2^8 - 1 = 255).
-    int random_number = rand_hard();
-
-    float result = random_number / 255;
-
-    return result;
 }
 
 
@@ -137,6 +145,7 @@ void set_led()
     }
     //  set_color(RGB(0, 1, 1));
 }
+
 
 // Function to handle motion.
 void set_motion(int new_motion)
@@ -172,6 +181,7 @@ void set_motion(int new_motion)
     }
 }
 
+
 void setup()
 {
     //If the robot is the seed, its gradient should be 0: overwrite the
@@ -181,13 +191,10 @@ void setup()
         own_gradient = 0;
 		distance_to_motivator = DISTANCE_COLLIDE;
 		update_distance_to_motivator = UPDATE;
+		state_motivator = COMPLETED;
 		update_state_motivator = UPDATE;
 		flag_minor = YES;
-		state_motivator = COMPLETED;
     }
-
-	last_logic_1 = EQUAL;
-	last_logic_2 = INLINE;
 
     // Set the transmission message.
     message.type = NORMAL;
@@ -199,6 +206,9 @@ void setup()
 	message.crc = message_crc(&message);
 }
 
+
+// If I am lost from all the others in the world, there should be mechnism
+// allowing me to find this serious thing since I am gregarious.
 void check_own_gradient() {
 	// If no neighbors detected within TIME_LAST_GRADIENT seconds
 	// then sleep waiting for be activated.
@@ -209,6 +219,8 @@ void check_own_gradient() {
     }
 }
 
+
+// Convert the current motion to its opposite one.
 int opposite_move(int offspring)
 {
 	set_color(RGB(1, 1, 1));
@@ -240,36 +252,14 @@ int opposite_move(int offspring)
 void move() {
 	int next_motion = offspring;
 
-	// Debug.
-	/*
-	if (NEARER)
-	{
-		set_color(RGB(1, 0, 0));
-	}
-	else if (EQUAL)
-	{
-		set_color(RGB(0, 1, 0));
-	}
-	else if (FARER)
-	{
-		set_color(RGB(0, 0, 1));
-	}
-	
-	if (INLINE)
-	{
-		set_color(RGB(1, 0, 0));
-	}
-	else if (OUTLINE)
-	{
-		set_color(RGB(0, 1, 0));
-	}
-	*/
-
-	// Decision making: 6 * 6 matrix.
+	// If My gradient is the maxest one, the only motion I need to execute
+	// is to step forward.
+	// Otherwise, I make my next motion decision based on a 6 * 6 matrix.
 	if (flag_maxest == YES)
 	{
 		next_motion = FORWARD;
 	}
+	// case 1:
 	else if (NEARER_INLINE)
 	{
 		set_color(RGB(1, 0, 0));
@@ -277,6 +267,7 @@ void move() {
 		last_logic_1 = LOGIC_NEARER;
 		last_logic_2 = LOGIC_INLINE;
 	}
+	// case 2:
 	else if (NEARER_OUTLINE)
 	{
 		set_color(RGB(0, 1, 0));
@@ -293,6 +284,7 @@ void move() {
 		last_logic_1 = LOGIC_NEARER;
 		last_logic_2 = LOGIC_OUTLINE;
 	}
+	// case 3:
 	else if (EQUAL_INLINE)
 	{
         set_color(RGB(0, 0, 1));
@@ -309,6 +301,7 @@ void move() {
 		last_logic_1 = LOGIC_EQUAL;
 		last_logic_2 = LOGIC_INLINE;
 	}
+	// case 4:
 	else if (EQUAL_OUTLINE)
 	{
 		set_color(RGB(1, 1, 0));
@@ -325,6 +318,7 @@ void move() {
 		last_logic_1 = LOGIC_EQUAL;
 		last_logic_2 = LOGIC_OUTLINE;
 	}
+	// case 5:
 	else if (FARER_INLINE)
 	{
 		set_color(RGB(1, 0, 1));
@@ -341,6 +335,7 @@ void move() {
 		last_logic_1 = LOGIC_FARER;
 		last_logic_2 = LOGIC_INLINE;
 	}
+	// case 6:
 	else if (FARER_OUTLINE)
 	{
 		set_color(RGB(0, 1, 1));
@@ -358,7 +353,7 @@ void move() {
 		last_logic_2 = LOGIC_OUTLINE;
 	}
 
-	// Update and carry out the decision making above.
+	// Update and carry out the decision maked above.
 	offspring = next_motion;
 	set_motion(offspring);
 }
@@ -400,13 +395,13 @@ void loop() {
 			{
 				state_myself = MOVE;
 			}
-
+			// The stop condition is independent.
 			if (distance_to_motivated <= DISTANCE_COLLIDE)
 			{
 				state_myself = COMPLETED;
 			}
 		}
-
+		// Move can only occure when I am in the MOVE state.
 		if (state_myself == MOVE)
 		{
 			// Motion is detected every fixed time interval
@@ -430,9 +425,10 @@ void loop() {
 				distance_line = distance_to_motivated + distance_to_motivator;
 				// Update.
 				// My motivated stops for the first time.
-				// So the distance_to_motivated becomes larger is not my fault.
+				// So the distance_to_motivated becomes larger is due to
+				// the motion of my motivated and not my fault.
 				// Hence, the best values for distance_to_motivated_best and
-				// distance_line_best needed to be initialized.
+				// distance_line_best needed to be initialized here.
 				if (my_fault == NO)
 				{
 					//set_color(RGB(1, 0, 0));
@@ -462,18 +458,21 @@ void loop() {
 			}
 			// If the distance is long-term no updated, 
 			// then I stop and wait.
+			// This can assure my motion is determined by the strategy.
 			else if (kilo_ticks > (last_motion_update + TIME_LAST_MOTION_UPDATE))
 			{
 				set_motion(STOP);
 			}
 		}
+		// If I am not in the MOVE state, I know that I cannot move.
 		else
 		{
 			//set_color(RGB(0, 0, 0));
 			set_motion(STOP);
 		}
     }
-	// Stop when the sequence has not formed.
+	// Stop when the sequence has not formed, or my motivator or motivated
+	// is/are in the MOVE state.
 	else
 	{
 		//set_color(RGB(0, 0, 0));
@@ -490,6 +489,7 @@ message_t *message_tx()
 	message.data[2] = state_myself;
 	message.data[3] = distance_to_motivator;
 /*
+	// Debug.
 	switch (state_myself)
     {
         case STOP:
@@ -517,12 +517,14 @@ void message_rx(message_t *m, distance_measurement_t *d)
     received_gradient = m->data[0];
     distance = estimate_distance(d);
 	// In the valid distance.
+	// This distance can be a constraint condition if needed.
 	if (distance <= DISTANCE_GRADIENT)
 	{
+		// I have neighbours. Mark it.
 		last_gradient_anchored = kilo_ticks;
 		// The message was sent by my motivated.
 		// I found someone's gradient maxer than mine in the world.
-		// My formed state is determined by my maxer.
+		// My formed state is determined by my motivated.
 		if (received_gradient > own_gradient)
 		{
 			last_found_maxer = kilo_ticks;
@@ -534,6 +536,13 @@ void message_rx(message_t *m, distance_measurement_t *d)
 				update_state_motivated = UPDATE;
 				if (state_motivated != MOVE)
 				{
+					// If this is the first time I detect the stationary
+					// state of my motivated, I need to mark it because
+					// the distance_to_motivated becomes larger is due to
+					// the motion of my motivated in the last moment,
+					// not my wrong decision making. 
+					// This is important because I can only make
+					// the right decision only when I know the truth.
 					if ((++num_stop) == 1)
 					{
 						my_fault = NO;
@@ -566,6 +575,16 @@ void message_rx(message_t *m, distance_measurement_t *d)
 		// The message was sent by my motivator.
 		else if (kilo_uid != SEED_ID)
 		{
+			// If four kilobots form a straght line, the distance between
+			// two ends is 3 * 33mm = 100 mm.
+			// The following code can assure that I am not affected by 
+			// my motivator's motivator 
+			// or even my motivator's motivator's motivator.
+			// For example, own_gradient = 3;
+			// my_motivator = 2;
+			// my_motivator's motivator = 1;
+			// my_motivator's motivator's motivator = 0;
+			// 0, 1, 2, 3
 			if (((own_gradient - received_gradient) == 2) || ((own_gradient - received_gradient) == 3))
 			{
 				// The message sender is closer, and meanwhile the last
@@ -580,6 +599,10 @@ void message_rx(message_t *m, distance_measurement_t *d)
 					distance_to_motivator = distance;
 					update_distance_to_motivator = UPDATE;
 				}
+				// Due to the message transfer delay, the following wrong
+				// gradient formation may occure,  0, 2, 1.
+				// The following code auotmatically modify this.
+				// This code occures when 2 first find 1 and then find 0.
 				else if (distance < distance_to_motivator_pair)
 				{
 					last_found_minor = kilo_ticks;
@@ -590,6 +613,8 @@ void message_rx(message_t *m, distance_measurement_t *d)
 					update_distance_to_motivator = UPDATE;
 				}
 			}
+			// This is the formal situation, my gradient is based on 
+			// a miner.
 			else
 			{
 				last_found_minor = kilo_ticks;
@@ -601,17 +626,14 @@ void message_rx(message_t *m, distance_measurement_t *d)
 			}
 		}
 
-
-		//flag_maxest = NO;
-
 		// I have neighbours whose gradient is minor than mine.
 		// Meanwhile long time no find gradient maxer than mine.
 		// I am the maxest one in my local world.
 		if((kilo_uid != SEED_ID) && (kilo_ticks > (last_found_maxer + TIME_CHECK_MAXER)))
 		{
+			flag_maxest = YES;
 			formed_state = FORMED_OK;
 			state_motivated = COMPLETED;
-			flag_maxest = YES;
 			distance_to_motivated = DISTANCE_MAX;
 			update_distance_to_motivated = UPDATE;
 		}
