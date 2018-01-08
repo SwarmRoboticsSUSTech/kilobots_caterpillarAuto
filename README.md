@@ -4,6 +4,9 @@ kilobots_caterpillarAuto is a PSO (Particle Swarm Optimization) inspired automat
 
 [![PSO-Caterpillar-Kilobot Demo Video]](https://www.youtube.com/watch?v=n_EGaZvJwH)
 
+This work is done by the OPAL Laboratory, SUSTech, China. And a wiki is accessible for this project.
+
+
 ## Get started
 
 1. Set the "kilo_uid" of one specific Kilobot to be 0 through the Kilobots Toolkit "kilogui". 
