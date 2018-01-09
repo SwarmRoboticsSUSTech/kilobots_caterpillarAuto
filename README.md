@@ -9,6 +9,8 @@ This work is done by the OPAL Laboratory, SUSTech, China. And a wiki is accessib
 
 ## Get started
 
+0. "caterpillarAuto.c" is the main function.
+
 1. Set the "kilo_uid" of one specific Kilobot to be 0 through the Kilobots Toolkit "kilogui". 
 
 2. Put it at the faremost tail of the Kilobots caterpillar. We can call this specific Kilobot the "SEED".
