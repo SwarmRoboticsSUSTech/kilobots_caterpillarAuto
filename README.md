@@ -2,7 +2,7 @@
 
 kilobots_caterpillarAuto is a PSO (Particle Swarm Optimization) inspired automatic caterpillar chain based on Kilobots. The final result is that a chain of Kilobots move automatically like a caterpillar.
 
-[![PSO-Caterpillar-Kilobot Demo Video]](https://www.youtube.com/watch?v=n_EGaZvJwH)
+[![PSO-Caterpillar-Kilobot Demo Video]](https://www.youtube.com/watch?v=n_EGaZvJwHY)
 
 This work is done by the OPAL Laboratory, SUSTech, China. And a wiki is accessible for this project.
 
