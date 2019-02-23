@@ -215,7 +215,7 @@ void check_own_gradient() {
     if ( (kilo_uid != SEED_ID) && (kilo_ticks > (last_found_minor + TIME_LAST_GRADIENT)) && (own_gradient < GRADIENT_MAX))
     {
         own_gradient = GRADIENT_MAX;
-		formed_state = FORMED_NO;
+	formed_state = FORMED_NO;
     }
 }
 
@@ -507,15 +507,15 @@ message_t *message_tx()
     }
 */
 	message.crc = message_crc(&message);
-    return &message;
+    	return &message;
 }
 
 void message_rx(message_t *m, distance_measurement_t *d)
 {
 	//set_color(RGB(0, 0, 0));
 	//set_color(RGB(1, 0, 0));
-    received_gradient = m->data[0];
-    distance = estimate_distance(d);
+    	received_gradient = m->data[0];
+    	distance = estimate_distance(d);
 	// In the valid distance.
 	// This distance can be a constraint condition if needed.
 	if (distance <= DISTANCE_GRADIENT)
