@@ -6,6 +6,8 @@ kilobots_caterpillarAuto is a PSO (Particle Swarm Optimization) inspired automat
 
 This work is done by the OPAL Laboratory, SUSTech, China. And a wiki is accessible for this project.
 
+**!!!Note that only the file "caterpillarAuto.c" is our work, while all the other codes are our dependencies which are provided by [1].**
+
 
 ## Get started
 
@@ -23,6 +25,10 @@ This work is done by the OPAL Laboratory, SUSTech, China. And a wiki is accessib
 
 ## Note:
 The Kilobots Toolkit "kilogui" can be downloaded at https://www.kilobotics.com/download.
+
+
+## References
+[1] https://github.com/SSR-Harvard/Kilobotics-labs
 
 
 ## Acknowledgements
