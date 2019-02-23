@@ -575,6 +575,11 @@ void message_rx(message_t *m, distance_measurement_t *d)
 		// The message was sent by my motivator.
 		else if (kilo_uid != SEED_ID)
 		{
+			// This code line is added by Lijun SUN on Feb 23, 2019.2
+			// Purpose: to modify the bug in this scope previously where the variable 
+			// @distance_to_motivator_pair is used before its value being updated.
+			distance_to_motivator_pair = m->data[3];
+			
 			// If four kilobots form a straght line, the distance between
 			// two ends is 3 * 33mm = 100 mm.
 			// The following code can assure that I am not affected by 
