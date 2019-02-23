@@ -189,29 +189,29 @@ void setup()
     if (kilo_uid == SEED_ID)
     {
         own_gradient = 0;
-		distance_to_motivator = DISTANCE_COLLIDE;
-		update_distance_to_motivator = UPDATE;
-		state_motivator = COMPLETED;
-		update_state_motivator = UPDATE;
-		flag_minor = YES;
+	distance_to_motivator = DISTANCE_COLLIDE;
+	update_distance_to_motivator = UPDATE;
+	state_motivator = COMPLETED;
+	update_state_motivator = UPDATE;
+	flag_minor = YES;
     }
 
     // Set the transmission message.
     message.type = NORMAL;
     message.data[0] = own_gradient;
-	// Sequence has not been formed completely.
-	message.data[1] = formed_state;
-	message.data[2] = state_motivator;
-	message.data[3] = distance_to_motivator;
-	message.crc = message_crc(&message);
+    // Sequence has not been formed completely.
+    message.data[1] = formed_state;
+    message.data[2] = state_motivator;
+    message.data[3] = distance_to_motivator;
+    message.crc = message_crc(&message);
 }
 
 
 // If I am lost from all the others in the world, there should be mechnism
 // allowing me to find this serious thing since I am gregarious.
 void check_own_gradient() {
-	// If no neighbors detected within TIME_LAST_GRADIENT seconds
-	// then sleep waiting for be activated.
+    // If no neighbors detected within TIME_LAST_GRADIENT seconds
+    // then sleep waiting for be activated.
     if ( (kilo_uid != SEED_ID) && (kilo_ticks > (last_found_minor + TIME_LAST_GRADIENT)) && (own_gradient < GRADIENT_MAX))
     {
         own_gradient = GRADIENT_MAX;
