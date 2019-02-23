@@ -456,7 +456,7 @@ void loop() {
 					}
 				}
 			}
-			// If the distance is long-term no updated, 
+			// If the distance is long-term not updated, 
 			// then I stop and wait.
 			// This can assure my motion is determined by the strategy.
 			else if (kilo_ticks > (last_motion_update + TIME_LAST_MOTION_UPDATE))
