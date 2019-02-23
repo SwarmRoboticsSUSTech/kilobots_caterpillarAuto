@@ -614,7 +614,7 @@ void message_rx(message_t *m, distance_measurement_t *d)
 				}
 			}
 			// This is the formal situation, my gradient is based on 
-			// a miner.
+			// a minor.
 			else
 			{
 				last_found_minor = kilo_ticks;
