@@ -157,24 +157,24 @@ void set_motion(int new_motion)
 
         if (current_motion == STOP)
         {
-			set_color(RGB(0, 0, 0));
+            set_color(RGB(0, 0, 0));
             set_motors(0, 0);
         }
         else if (current_motion == FORWARD)
         {
-			//set_color(RGB(1, 0, 0));
+	    //set_color(RGB(1, 0, 0));
             spinup_motors();
             set_motors(kilo_straight_left, kilo_straight_right);
         }
         else if (current_motion == LEFT)
         {
-			//set_color(RGB(0, 1, 0));
+	    //set_color(RGB(0, 1, 0));
             spinup_motors();
             set_motors(kilo_turn_left, 0);
         }
         else if (current_motion == RIGHT)
         {
-			//set_color(RGB(0, 0, 1));
+	    //set_color(RGB(0, 0, 1));
             spinup_motors();
             set_motors(0, kilo_turn_right);
         }
